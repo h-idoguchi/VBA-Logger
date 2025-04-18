@@ -59,7 +59,7 @@ Const DEFAULT_PROPSFILE_NAME = "vba_log.properties"
 
 'Class Konstructor
 Private Sub Class_Initialize()
-        On Error GoTo Errhandler:
+        On Error GoTo ErrHandler:
         Dim localpath As String
         bUseLogPrefix = True
         bDelLogFileAtSetup = True
@@ -72,24 +72,26 @@ Private Sub Class_Initialize()
         PropsFileName = localpath & "\" & DEFAULT_PROPSFILE_NAME
 
         'make sure defaults are set
-        Call setLoggigParams(DEFAULT_LOG_LEVEL, DEFAULT_LOG_Console, DEFAULT_LOG_Buffer, DEFAULT_LOG_FILE)
+        Call setLoggingParams(DEFAULT_LOG_LEVEL, DEFAULT_LOG_Console, DEFAULT_LOG_Buffer, DEFAULT_LOG_FILE)
         'set default log file path
         LogFilePath = localpath & "\" & "vba_logger.log"
         TraceFilePath = localpath & "\" & "vba_trace.log"
-        'check if params can be set from a properties file and overwrite defaults if available
-        Call getLogParamsFromFile
+        
+        'check if params can be set from a CustomDocumentProperties and overwrite defaults if available
+        Call getLogParamsFromCustomDocumentProperties
+        
         'set log file
         Call setLogFile(LogFilePath, False)
 
 Exit Sub
 
-Errhandler:
+ErrHandler:
   Debug.Print "Error in Logger.Class_Initialize & "; " & Err.Number & "; " & Err.Description"
 
 End Sub
 
 'set logging parameters
-Public Sub setLoggigParams(level As LogLEVEL, toConsole As Boolean, toBuffer As Boolean, toLogFile As Boolean, Optional deleteExistingLogFile)
+Public Sub setLoggingParams(level As LogLEVEL, toConsole As Boolean, toBuffer As Boolean, toLogFile As Boolean, Optional deleteExistingLogFile)
          Dim delLogfile As Boolean
 
          iLogLevel = level
@@ -202,7 +204,7 @@ End Function
 
 Private Sub writeToLogFile(logmsg As String)
     Dim fileNum As Integer
-    On Error GoTo Errhandler:
+    On Error GoTo ErrHandler:
     If Len(Me.LogFilePath) = 0 Then
        Debug.Print "Error: Log file path is empty."
        Exit Sub
@@ -214,13 +216,13 @@ Private Sub writeToLogFile(logmsg As String)
     Close #fileNum ' close the file
 Exit Sub
 
-Errhandler:
+ErrHandler:
     Debug.Print "Error writing to Logfile: " & Me.LogFilePath & " " & Err.Number & " " & Err.Description
 
 End Sub
 
 Public Sub writeLogBuffer(Optional myfilePath As String)
-    On Error GoTo Errhandler:
+    On Error GoTo ErrHandler:
     Dim mytracefile As String
     Dim lines() As String
     Dim line As Variant
@@ -247,68 +249,26 @@ Public Sub writeLogBuffer(Optional myfilePath As String)
     Close #fileNum ' close the file
 Exit Sub
 
-Errhandler:
+ErrHandler:
         Debug.Print "Error writing to Tracefile: " & mytracefile & " " & Err.Number & " " & Err.Description
 End Sub
 
-Private Sub readPropertiesFile(path As String)
-        
-        On Error GoTo Errhandler:
-        Dim txtline As String
-        Dim para() As String
-        Dim mymsg As String
-        Dim fileNum As Integer
-        
-        fileNum = FreeFile
-        
-        If Len(path) = 0 Then GoTo Errhandler
-        Open path For Input As #fileNum       ' open file
-        Do While Not EOF(fileNum)               ' Loop until end of file
-          Line Input #fileNum, txtline         ' read line
-
-          'Debug.Print txtline 'test
-          para = readParameter(txtline)
-
-          If Len(para(0)) = 0 Then
-                'continue
-          ElseIf ("LOG_LEVEL" = UCase(para(0))) Then
-                Call setLogLevel(para(1))
-          ElseIf ("LOG_TO_CONSOLE" = UCase(para(0))) Then
-                bConsole = valIsTrue(para(1))
-          ElseIf ("LOG_TO_BUFFER" = UCase(para(0))) Then
-                bBuffer = valIsTrue(para(1))
-          ElseIf ("LOG_TO_FILE" = UCase(para(0))) Then
-                bToLogFile = valIsTrue(para(1))
-          ElseIf ("LOG_FILE_PATH" = UCase(para(0))) Then
-                Me.LogFilePath = para(1)
-          End If
-        Loop
-        Close #fileNum
-        'show settings
-        mymsg = "Logging with logLevel=" & getLogLevelName(iLogLevel) & " toConsole=" & bConsole & " toBuffer=" & bBuffer & " toLogFile=" & bToLogFile
-        Call log(mymsg, LogLEVEL.BASIC)
-Exit Sub
-
-Errhandler:
-        Debug.Print "Error reading Properties File: " & path & " " & Err.Number & " " & Err.Description
-
-End Sub
 'delete log file currently set
 Public Sub deleteLogFile()
-  On Error GoTo Errhandler:
+  On Error GoTo ErrHandler:
   If (FileExists(Me.LogFilePath)) Then
          Kill (Me.LogFilePath)
   End If
 Exit Sub
 
-Errhandler:
+ErrHandler:
   Debug.Print "Error deleting Logfile " & Me.LogFilePath & " " & Err.Number & " " & Err.Description
 
 End Sub
 'set logfilepath
 '- will delete an existing log file if bDelLogFileAtSetup is set to true
 Public Sub setLogFile(filePath As String, delExitingFile As Boolean)
-  On Error GoTo Errhandler:
+  On Error GoTo ErrHandler:
 
   Me.LogFilePath = filePath
   'delete if set to true
@@ -316,27 +276,38 @@ Public Sub setLogFile(filePath As String, delExitingFile As Boolean)
   If (bToLogFile) Then Debug.Print "Logfile set to: " & LogFilePath
 Exit Sub
 
-Errhandler:
+ErrHandler:
   Debug.Print "Error setLogFile " & LogFilePath & " " & Err.Number & " " & Err.Description
 
 End Sub
 
-Public Function getLogParamsFromFile()
+Public Function getLogParamsFromCustomDocumentProperties() As Boolean
+    Dim prop As Object
+    On Error GoTo ErrHandler
 
-  On Error GoTo Errhandler:
-  If (FileExists(PropsFileName)) Then
-         Debug.Print "Reading: " & PropsFileName
-         'read and set parameter from properties file
-         readPropertiesFile (PropsFileName)
-         getLogParamsFromFile = True
-   Exit Function
-  End If
-  getLogParamsFromFile = False
+    For Each prop In ThisWorkbook.CustomDocumentProperties
+        Select Case UCase(prop.Name)
+            Case "LOG_LEVEL"
+                Call setLogLevel(CStr(prop.Value))
+            Case "LOG_TO_CONSOLE"
+                bConsole = valIsTrue(CStr(prop.Value))
+            Case "LOG_TO_BUFFER"
+                bBuffer = valIsTrue(CStr(prop.Value))
+            Case "LOG_TO_FILE"
+                bToLogFile = valIsTrue(CStr(prop.Value))
+            Case "LOG_FILE_PATH"
+                If Len(CStr(prop.Value)) > 0 Then LogFilePath = CStr(prop.Value)
+            Case "TRACE_FILE_PATH"
+                If Len(CStr(prop.Value)) > 0 Then TraceFilePath = CStr(prop.Value)
+        End Select
+    Next prop
 
-Exit Function
-Errhandler:
-  Debug.Print "Error getLogParamsFromFile " & PropsFileName & " " & Err.Number & " " & Err.Description
-  getLogParamsFromFile = False
+    getLogParamsFromCustomDocumentProperties = True
+    Exit Function
+
+ErrHandler:
+    Debug.Print "Error getLogParamsFromCustomDocumentProperties: " & Err.Number & " " & Err.Description
+    getLogParamsFromCustomDocumentProperties = False
 End Function
 
 Private Sub setLogLevel(level As String)
@@ -429,4 +400,8 @@ Public Sub addline(logmsg As String)
    Else
          strLogbuffer = logmsg  'avoid empty line when strLogbuffer=""
    End If
+End Sub
+
+Private Sub Class_Terminate()
+
 End Sub
