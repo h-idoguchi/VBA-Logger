@@ -6,7 +6,7 @@ Attribute VB_Name = "Logger"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
-Attribute VB_Exposed = False
+Attribute VB_Exposed = True
 Option Explicit
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -32,8 +32,8 @@ Public bDelLogFileAtSetup As Boolean
 Public PropsFileName As String
 Public strLogbuffer As String
 
-'ModulName
-Public ModulName As String
+'ModuleName
+Public ModuleName As String
 
 'Define log levels
 Public Enum LogLEVEL
@@ -65,7 +65,7 @@ Private Sub Class_Initialize()
         bDelLogFileAtSetup = True
 
         'default
-        ModulName = ""
+        ModuleName = ""
 
         'set default location of props file to directory of this Logger and add default name
         localpath = getParentFolder(Application.VBE.ActiveVBProject.Filename) 'set path to location of file containing this Logger
@@ -91,7 +91,7 @@ ErrHandler:
 End Sub
 
 'set logging parameters
-Public Sub setLoggingParams(level As LogLEVEL, toConsole As Boolean, toBuffer As Boolean, toLogFile As Boolean, Optional deleteExistingLogFile)
+Public Sub setLoggingParams(level As LogLEVEL, toConsole As Boolean, toBuffer As Boolean, toLogFile As Boolean, Optional deleteExistingLogFile As Boolean)
          Dim delLogfile As Boolean
 
          iLogLevel = level
@@ -124,7 +124,7 @@ Public Sub log(sLogText As String, Optional level As LogLEVEL, Optional slogpoin
         End If
 End Sub
 
-Private Sub WriteLog(sLogText, level As LogLEVEL, slogpoint As String)
+Private Sub WriteLog(sLogText As String, level As LogLEVEL, slogpoint As String)
 
     Dim LogMessage As String
     
@@ -185,12 +185,12 @@ Private Function getLogPrefix(level As LogLEVEL, logpoint As String)
         iLevel = level ' to Integer
         myLevelPrefix = getLogLevelName(iLevel)
 
-        If (Len(Me.ModulName) > 0 And Len(logpoint) > 0) Then
-                mySubModul = "[" & Me.ModulName & "::" & logpoint & "]"
+        If (Len(Me.ModuleName) > 0 And Len(logpoint) > 0) Then
+                mySubModul = "[" & Me.ModuleName & "::" & logpoint & "]"
         ElseIf (Len(logpoint) > 0) Then
                 mySubModul = "[" & logpoint & "]"
-        ElseIf (Len(Me.ModulName) > 0) Then
-                mySubModul = "[" & Me.ModulName & "]"
+        ElseIf (Len(Me.ModuleName) > 0) Then
+                mySubModul = "[" & Me.ModuleName & "]"
         Else
                 mySubModul = ""
         End If
