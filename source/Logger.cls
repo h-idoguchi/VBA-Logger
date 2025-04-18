@@ -405,3 +405,77 @@ End Sub
 Private Sub Class_Terminate()
 
 End Sub
+''' デフォルト値をもとにカスタムドキュメントプロパティを生成／更新する
+Public Sub createCustomDocumentProperties(Optional overwriteExisting As Boolean = False)
+    Dim props      As Object
+    Dim prop       As Object
+    Dim defaultVal As Variant
+
+    On Error GoTo ErrHandler
+    Set props = ThisWorkbook.CustomDocumentProperties
+
+    ' 既存プロパティを削除（上書きモードの場合）
+    If overwriteExisting Then
+        For Each prop In props
+            Select Case UCase(prop.Name)
+                Case "LOG_LEVEL", "LOG_TO_CONSOLE", "LOG_TO_BUFFER", _
+                     "LOG_TO_FILE",  "LOG_FILE_PATH",   "TRACE_FILE_PATH"
+                    prop.Delete
+            End Select
+        Next prop
+    End If
+
+    ' 各プロパティを追加（存在しなければ）
+    If Not propertyExists("LOG_LEVEL") Then
+        ' デフォルトのログレベルは定数 DEFAULT_LOG_LEVEL（数値）なので、
+        ' 名前で扱いたい場合は getLogLevelName で文字列化し、末尾の「:」を除去
+        defaultVal = Replace(getLogLevelName(DEFAULT_LOG_LEVEL), ":", "")
+        props.Add Name:="LOG_LEVEL", LinkToContent:=False, _
+                  Type:=msoPropertyTypeText, Value:=defaultVal
+    End If
+
+    If Not propertyExists("LOG_TO_CONSOLE") Then
+        props.Add Name:="LOG_TO_CONSOLE", LinkToContent:=False, _
+                  Type:=msoPropertyTypeBoolean, Value:=DEFAULT_LOG_Console
+    End If
+
+    If Not propertyExists("LOG_TO_BUFFER") Then
+        props.Add Name:="LOG_TO_BUFFER", LinkToContent:=False, _
+                  Type:=msoPropertyTypeBoolean, Value:=DEFAULT_LOG_Buffer
+    End If
+
+    If Not propertyExists("LOG_TO_FILE") Then
+        props.Add Name:="LOG_TO_FILE", LinkToContent:=False, _
+                  Type:=msoPropertyTypeBoolean, Value:=DEFAULT_LOG_FILE
+    End If
+
+    If Not propertyExists("LOG_FILE_PATH") Then
+        props.Add Name:="LOG_FILE_PATH", LinkToContent:=False, _
+                  Type:=msoPropertyTypeText, Value:=Me.LogFilePath
+    End If
+
+    If Not propertyExists("TRACE_FILE_PATH") Then
+        props.Add Name:="TRACE_FILE_PATH", LinkToContent:=False, _
+                  Type:=msoPropertyTypeText, Value:=Me.TraceFilePath
+    End If
+
+    Exit Sub
+
+ErrHandler:
+    Debug.Print "Error in createCustomDocumentProperties: " & Err.Number & " - " & Err.Description
+End Sub
+
+''' 指定した名前のカスタムプロパティが存在するかチェック
+Private Function propertyExists(propName As String) As Boolean
+    Dim prop As Object
+    On Error Resume Next
+    propertyExists = False
+    For Each prop In ThisWorkbook.CustomDocumentProperties
+        If UCase(prop.Name) = UCase(propName) Then
+            propertyExists = True
+            Exit For
+        End If
+    Next prop
+    On Error GoTo 0
+End Function
+
