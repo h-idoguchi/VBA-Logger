@@ -1,3 +1,6 @@
+使い方
+source/logger.clsをインポート。Loggerを組み込みたいプロジェクト内でGetInstanceメソッドを作るか、Loggerクラスのプロパティで外部からのNewを許可する
+
 # VBA-Logger
 
 Origin - [http://www.bolterauer.de/consulting/dev/vbatools/vba_logging/VBALogging.html]
